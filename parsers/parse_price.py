@@ -1,8 +1,10 @@
 import pandas as pd 
 
-def parse_price(val):
+import os
 
+QUARANTINE_DIR = os.path.join("quarantine", "quarantine_date")
 
+def _parse_price(val):
     if pd.isnull(val) or str(val).strip()=="":
         return pd.NA
     val = str(val).strip()
@@ -18,6 +20,48 @@ def parse_price(val):
         return float(val)
     except ValueError:
         return val
+    
+
+def clean_price(df, original_df):
+    
+
+    
+    df['unit_price_clean'] = df['unit_price'].apply(_parse_price)
+    unparsed_price = df['unit_price_clean'].apply(lambda x:isinstance(x,str))
+    
+    failed_indexes = df[unparsed_price].index.tolist()
+
+    
+   
+    if failed_indexes:
+        os.makedirs(QUARANTINE_DIR, exist_ok=True)
+
+        quarantine_rows = original_df.loc[failed_indexes].copy()
+       
+        quarantine_path = os.path.join(
+            QUARANTINE_DIR,
+            f"quarantine_date_{pd.Timestamp.now().strftime('%d-%m-%Y')}.csv"
+        )
+        quarantine_rows.to_csv(quarantine_path, index=False)
+       
+
+   
+    clean_df = df.drop(index=failed_indexes)
+
+    
+
+    clean_df = clean_df.drop(columns=['unit_price'])
+    clean_df = clean_df.rename(columns={'unit_price_clean': 'unit_price'})
+
+    clean_df['unit_price'] = pd.to_datetime(
+        clean_df['unit_price'], errors='coerce'
+    )
+
+    
+    return clean_df, failed_indexes
+
+
+
     
 
 # df['unit_price_clean'] = df['unit_price'].apply(parse_price)

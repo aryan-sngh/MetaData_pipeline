@@ -1,9 +1,13 @@
-from datetime import datetime
+import os 
 import pandas as pd
 
-ist_offset = pd.Timedelta(hours = 5,minutes = 30)
 
-def parse_date(val):
+
+QUARANTINE_DIR = os.path.join("quarantine", "quarantine_date")
+
+from datetime import datetime
+ist_offset = pd.Timedelta(hours = 5,minutes = 30)
+def _parse_date(val):
     date_formats= [
         "%Y-%m-%d", # 2023-09-2026
         "%d/%m/%Y", # 26/09/2023
@@ -25,9 +29,47 @@ def parse_date(val):
             continue
     return val
 
+def clean_date(df, original_df):
+    
 
-# df['order_date_parsed'] = df['order_date'].apply(parse_date)
-# unparsed_date = df['order_date_parsed'].apply(lambda x:isinstance(x,str))
-# df[unparsed_date][['order_date', 'order_date_parsed']]
+    
+    
+    df['order_date_parsed'] = df['order_date'].apply(_parse_date)
 
-# df.iloc[324]
+    unparsed_mask  = df['order_date_parsed'].apply(lambda x: isinstance(x, str))
+    failed_indexes = df[unparsed_mask].index.tolist()
+
+    
+   
+    if failed_indexes:
+        os.makedirs(QUARANTINE_DIR, exist_ok=True)
+
+        quarantine_rows = original_df.loc[failed_indexes].copy()
+       
+        quarantine_path = os.path.join(
+            QUARANTINE_DIR,
+            f"quarantine_date_{pd.Timestamp.now().strftime('%d-%m-%Y')}.csv"
+        )
+        quarantine_rows.to_csv(quarantine_path, index=False)
+       
+
+   
+    clean_df = df.drop(index=failed_indexes)
+
+    
+
+    clean_df = clean_df.drop(columns=['order_date'])
+    clean_df = clean_df.rename(columns={'order_date_parsed': 'order_date'})
+
+    clean_df['order_date'] = pd.to_datetime(
+        clean_df['order_date'], errors='coerce'
+    )
+
+    
+    return clean_df, failed_indexes
+
+
+
+
+
+

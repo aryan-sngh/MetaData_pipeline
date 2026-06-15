@@ -1,8 +1,10 @@
 import pandas as pd
-
-
+import os
 import re
-def parse_phone(val):
+
+
+
+def _parse_phone(val):
     if pd.isnull(val) or str(val).strip() =="":
         return pd.NA
     val = str(val).strip()
@@ -15,6 +17,51 @@ def parse_phone(val):
         return digits
     else:
         return val
+
+
+
+    
+def clean_phone(df, original_df):
+    
+
+    
+    df["phone_clean"] = df["phone"].apply(_parse_phone)
+
+
+    unparsed_phone = df['phone_clean'].apply(lambda x:isinstance(x,str))
+    
+    failed_indexes = df[unparsed_phone].index.tolist()
+
+    
+   
+    if failed_indexes:
+        os.makedirs(QUARANTINE_DIR, exist_ok=True)
+
+        quarantine_rows = original_df.loc[failed_indexes].copy()
+       
+        quarantine_path = os.path.join(
+            QUARANTINE_DIR,
+            f"quarantine_date_{pd.Timestamp.now().strftime('%d-%m-%Y')}.csv"
+        )
+        quarantine_rows.to_csv(quarantine_path, index=False)
+       
+
+   
+    clean_df = df.drop(index=failed_indexes)
+
+    
+
+    clean_df = clean_df.drop(columns=['phone'])
+    clean_df = clean_df.rename(columns={'phone_clean': 'phone'})
+
+    clean_df['phone'] = pd.to_datetime(
+        clean_df['phone'], errors='coerce'
+    )
+
+   
+    return clean_df, failed_indexes
+
+
 
 
 

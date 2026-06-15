@@ -1,7 +1,8 @@
 import pandas as pd
+import os
 
 
-def parse_status(val):
+def _parse_status(val):
 
 
     if (
@@ -48,6 +49,53 @@ def parse_status(val):
 
     
     return val.title()
+
+def clean_status(df, original_df):
+    
+
+    
+    df["status_clean"] = df["status"].apply(_parse_status)
+
+
+    unparsed_status = df["status_clean"].apply(
+    lambda x: isinstance(x, str) and x is not pd.NA
+)
+    
+    failed_indexes = df[unparsed_status].index.tolist()
+
+    
+   
+    if failed_indexes:
+        os.makedirs(QUARANTINE_DIR, exist_ok=True)
+
+        quarantine_rows = original_df.loc[failed_indexes].copy()
+       
+        quarantine_path = os.path.join(
+            QUARANTINE_DIR,
+            f"quarantine_date_{pd.Timestamp.now().strftime('%d-%m-%Y')}.csv"
+        )
+        quarantine_rows.to_csv(quarantine_path, index=False)
+       
+
+   
+    clean_df = df.drop(index=failed_indexes)
+
+    
+
+    clean_df = clean_df.drop(columns=['status'])
+    clean_df = clean_df.rename(columns={'status_clean': 'status'})
+
+    clean_df['status'] = pd.to_datetime(
+        clean_df['status'], errors='coerce'
+    )
+
+    return clean_df, failed_indexes
+
+
+
+
+
+
 
 
 
