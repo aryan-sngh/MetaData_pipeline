@@ -1,6 +1,8 @@
 import pandas as pd
 import os
 
+
+
 def _parse_discount(val):
     if pd.isnull(val) or str(val).strip()=="":
         return pd.NA

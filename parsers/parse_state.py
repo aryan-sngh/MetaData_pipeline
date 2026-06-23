@@ -1,5 +1,8 @@
 import pandas as pd
-def parse_state(val):
+import os
+
+
+def _parse_state(val):
     
     if (
         pd.isnull(val)
@@ -34,6 +37,48 @@ def parse_state(val):
 
     
     return val.title()
+
+
+
+def clean_state(df, original_df):
+    
+    df["state_clean"] = df["state"].apply(_parse_state)
+    unparsed_state = df["state_clean"].apply(
+    lambda x: isinstance(x, str) and x is not pd.NA
+)
+
+    
+    failed_indexes = df[unparsed_state].index.tolist()
+
+    
+   
+    if failed_indexes:
+        os.makedirs(QUARANTINE_DIR, exist_ok=True)
+
+        quarantine_rows = original_df.loc[failed_indexes].copy()
+       
+        quarantine_path = os.path.join(
+            QUARANTINE_DIR,
+            f"quarantine_date_{pd.Timestamp.now().strftime('%d-%m-%Y')}.csv"
+        )
+        quarantine_rows.to_csv(quarantine_path, index=False)
+       
+
+   
+    clean_df = df.drop(index=failed_indexes)
+
+    
+
+    clean_df = clean_df.drop(columns=['state'])
+    clean_df = clean_df.rename(columns={'state_clean': 'state'})
+
+    clean_df['state'] = pd.to_datetime(
+        clean_df['state'], errors='coerce'
+    )
+
+    
+    return clean_df, failed_indexes
+
 
 
 
